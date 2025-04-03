@@ -1,0 +1,293 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        700,
+        200
+      ],
+      "id": "56381ad9-1749-4f32-b670-50cca81db22d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gt5mZhIZGJ4TTHBq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload Resume File",
+        "formDescription": "Please upload resume in pdf format!",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Pdf",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -40
+      ],
+      "id": "c5f1d298-b7e4-4268-97d4-e907144f9872",
+      "name": "UploadResume",
+      "webhookId": "f358bb75-d70b-4283-b3b8-29189339cc91"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "purpose",
+              "value": "ocr"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "=Pdf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        60,
+        -40
+      ],
+      "id": "5b60b621-c87a-4ca3-a151-1d14415afbc6",
+      "name": "SendPDFToOCR",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8Iy5IePvzktrJxUg",
+          "name": "MistralOCR-Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.mistral.ai/v1/files/{{ $json.id }}/url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "expiry",
+              "value": "24"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        -40
+      ],
+      "id": "db6a8fd2-04f7-46fb-bd61-ccf159eebc8d",
+      "name": "GetOCRResultURL",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8Iy5IePvzktrJxUg",
+          "name": "MistralOCR-Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-ocr-latest\",\n  \"document\": {\n    \"type\": \"document_url\",\n    \"document_url\": \"{{ $json.url }}\"\n  },\n  \"include_image_base64\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        -40
+      ],
+      "id": "c68b0df4-b81f-4c49-969c-cb8e891f8d04",
+      "name": "GetOCRResult",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8Iy5IePvzktrJxUg",
+          "name": "MistralOCR-Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.pages[0].markdown }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "ApplicantName",
+              "description": "Name of the applicant.",
+              "required": true
+            },
+            {
+              "name": "PhoneNumber",
+              "description": "Phone number of the applicant.",
+              "required": true
+            },
+            {
+              "name": "JobTitle",
+              "description": "Job title of the applicant.",
+              "required": true
+            },
+            {
+              "name": "TotalExperienceByYear",
+              "description": "Total experience by year of the applicant.",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1,
+      "position": [
+        680,
+        -40
+      ],
+      "id": "a53db96e-c211-4b26-815f-2d554bc6951b",
+      "name": "ExtractInfoByAI"
+    }
+  ],
+  "pinData": {
+    "GetOCRResultURL": [
+      {
+        "json": {
+          "url": "https://mistralaifilesapiprodswe.blob.core.windows.net/fine-tune/adb45f5d-5d44-4fdc-9b0b-dc910b958f4a/2d76215568b54d4ab8d112cadc931213.pdf?se=2025-04-04T08%3A16%3A07Z&sp=r&sv=2025-05-05&sr=b&sig=cx3%2BIZxGDXuVaczh%2BVim9CbKhlsoRKF8O2g4BFcdQ4o%3D"
+        }
+      }
+    ],
+    "GetOCRResult": [
+      {
+        "json": {
+          "pages": [
+            {
+              "index": 0,
+              "markdown": "# Gokcan Eren \n\ngokcann01@gmail.com $\\cdot$ +8618721447137 $\\cdot$ Wechat: erengokcan $\\cdot$ Shanghai/China $\\cdot$ GitHub\n\n## Backend Developer\n\nSpecialties: .Net, C\\#, Rest API, Docker, Git\nTechnologies: .Net Framework, .Net Core, Entity Framework, Dapper, Mssql, MongoDB, Postgresql, Mysql, Redis, Elastic Search, Ocelot, RabbitMQ, gRPC, WCF, WPF, GraphQL, Abp Framework, Postman\nLanguages: Chinese: B1, English: C1, Turkish: Native\nInterests: Cooking, Books, Movies, Boxing, MMA, BodyBuilding\n\n## PROFESSIONAL EXPERIENCE\n\nRest Yazılım ve Danışmanlık Backend Developer OCTOBER 2022 - JULY 2023\n\n- Oversee backend development using C\\#/ASP.NET to maintain RPA(Robotic Process Automation) apps and website integrity and efficiency.\n- Using various architectures(Microservices, Onion, NLayer and Clean Code) to develop Rest APIs.\n- Build databases and table structures in SQL and NOSQL databases.\n- Deployment of websites and RPA apps to servers using IIS.\n- Containerizing services and managing the whole system.\n- Contact with customers for the deployment of various apps.\n\nEfectura Backend Developer\nJULY 2023 - NOVEMBER 2023\n\n- Build and maintain Rest API's by using C\\# .Net Framework.\n- Payment systems developments and integration.\n- Contact with customers for the real time bug fix.\n\nPiton Technology Backend Developer\nNOVEMBER 2023 - DECEMBER 2024\n\n- Build modular backend applications by using .Net. (Abp Framework)\n- Build and maintain Intelligent Transportation Systems and Geographic Information Systems.\n- Payment systems developments and integration.\n- Development of distributed systems.\n- Build real time chat application with WebSocket(SignalR).\n\n\n## EDUCATION AND COURSES\n\nErciyes University Chinese Language and Literature (Bachelor's\n\nSeptember 2014 - July 2021\nDegree)\nDalian Technology University (Intermediate Chinese Course)\nMarch 2018 - July 2018\nShandong University of Finance and Economics (Advanced September 2019 - July 2021 Chinese Course/Scholarship)\nKodluyoruz Code, Start Your Career C\\# and .NET Core Bootcamp\nLink\nBTK AKADEMİ Versiyon Kontrolleri: Git ve Github Link\n\nMarch 2022 - May 2022",
+              "images": [],
+              "dimensions": {
+                "dpi": 200,
+                "height": 2339,
+                "width": 1656
+              }
+            }
+          ],
+          "model": "mistral-ocr-2503-completion",
+          "usage_info": {
+            "pages_processed": 1,
+            "doc_size_bytes": 139205
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ExtractInfoByAI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UploadResume": {
+      "main": [
+        [
+          {
+            "node": "SendPDFToOCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendPDFToOCR": {
+      "main": [
+        [
+          {
+            "node": "GetOCRResultURL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetOCRResultURL": {
+      "main": [
+        [
+          {
+            "node": "GetOCRResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetOCRResult": {
+      "main": [
+        [
+          {
+            "node": "ExtractInfoByAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9ffc1b88-14bb-4810-b645-3ae4adb7a871",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9217bd8fa595a353423992e8138fe0c6dd678775b8d32dac7e2281966b3409c2"
+  },
+  "id": "I3ypkf5ixD5xfOgH",
+  "tags": []
+}
